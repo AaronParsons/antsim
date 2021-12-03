@@ -20,37 +20,44 @@ def run(steps, size=SIZE, plot_every=1):
     hy = np.zeros(size)
     ez = np.zeros(size)
 
+    # Add an impedance discontinuity
+    # Slicing of Z has to follow H
+    Z = np.ones(size) * Z_fs
+    Z[-size//4+1:] *= 2
+
     # Initialize plotting
     plt.ion()
     fig = plt.figure()
     E_plot, = plt.plot(np.arange(size), ez, label='$E_z$')
     H_plot, = plt.plot(np.arange(size) + 0.5, hy, label='$H_y$')
-    plt.ylim(-1,1)
+    Z_plot, = plt.plot(np.arange(size), Z / Z_fs, label='$Z$')
+    plt.ylim(-3,3)
+    plt.legend()
 
     for t in tqdm.tqdm(range(steps)):
-        # simple absorbing boundary condition
+        # simple H absorbing boundary condition
         hy[-1] = hy[-2] # ABC for upper edge
         # first update magnetic field
-        hy[:-1] += np.diff(ez) / Z_fs
+        hy[:-1] += np.diff(ez) / Z[:-1]
 
         # update additive source
-        hy[SIZE//4-1] -= np.exp(-(t-30)**2 / 100) / Z_fs
+        hy[size//4-1] -= np.exp(-(t-30)**2 / 100) / Z[size//4-1]
 
-        # simple absorbing boundary condition
+        # simple E absorbing boundary condition
         ez[0] = ez[1]
         # next update electric field
-        ez[1:] += np.diff(hy) * Z_fs
+        ez[1:] += np.diff(hy) * Z[:-1]
         # update additive source
-        ez[SIZE//4] += np.exp(-(t+1-30)**2 / 100)
+        ez[size//4] += np.exp(-(t+1-30)**2 / 100)
         
 
         # update plots
         if t % plot_every == 0:
             E_plot.set_ydata(ez)
-            H_plot.set_ydata(hy * Z_fs)
+            H_plot.set_ydata(hy * Z)
             fig.canvas.draw()
             fig.canvas.flush_events()
             time.sleep(0.01)
 
 if __name__ == '__main__':
-    run(450, plot_every=10)
+    run(450, plot_every=1)
