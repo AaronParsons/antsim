@@ -30,18 +30,31 @@ class simulator:
         self.ez = np.zeros_like(self.grid)
         self.impedance=Z0*np.ones_like(self.grid)
 
-    def add_loss(self, loss=0.02, thickness_ratio=0.5):
+    def add_loss(self, loss=0.02, thickness_ratio=0.5, epsr=4.):
         thickness=int(thickness_ratio*self.grid_size)
-        self.loss[:-thickness]=0
+        self.loss[:-thickness]=0.
         self.loss[-thickness:]=loss
+        self.epsr[:-thickness]=1.
+        self.epsr[-thickness:]=epsr  # epsilon/espilon0
 
+    def add_source(self, ppw=40.):
+        """
+        ppw = float: points per wavelength
 
-    def add_source(self):
+        see 5.2 in Schneider for derivation of discretized forms of sources
+        """
+        arg=2.*np.pi
+        arg/=ppw*(self.sc*time-location)
+        source=np.sin(arg)
 
 
     def update_fields(self):
-        self.hy[:-1] += np.diff(ez) / self.impedance[:-1]
-        self.ez[1:] += np.diff(hy) * self.impedance[:-1]
+        """
+        Only electric loss, no magnetic
+        """
+        self.hy[:-1]+=np.diff(ez)/self.impedance[:-1]
+        self.ez[1:]*=(1.-self.loss)/(1.+self.loss) 
+        self.ez[1:]+=np.diff(hy)*self.impedance[:-1]/(self.epsr*(1+self.loss))  # den=1 for vacuum
 
 def run(steps, size=SIZE, plot_every=1):
     '''
