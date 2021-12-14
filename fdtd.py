@@ -34,6 +34,8 @@ class simulator:
 
         self.source_loc=0
 
+        self.poynting_flux=np.empty((self.steps, 2))  # each row is time,firsdt col=left edge, 2nd col=right edge
+
     def add_loss(self, loss=0.02, thickness_ratio=0.5, epsr=4.):
         thickness=int(thickness_ratio*self.grid_size)
         self.loss[:-thickness]=0.
@@ -72,6 +74,14 @@ class simulator:
         if source is not None:
             self.ez[self.source_loc]+=source(-.5, timestep+.5)
    
+    def calc_flux(self, timestep, left_edge=1, right_edge=-2):
+        flux_r=-self.ez[right_edge]*(self.hy[right_edge]+self.hy[right_edge-1])/2
+        flux_r/=MU0
+        flux_l=self.hy[left_edge]*(self.ez[left_edge]+self.ez[right_edge+1])/2
+        flux_l/=MU0
+        self.poynting_flux[timestep]=[flux_l, flux_r]
+
+
     def run(self, plot_every, source_fcn=None, source_loc=10, **kwargs):
         if source_fcn is not None:
             source=self.add_source(source_fcn, source_loc, **kwargs)
@@ -89,6 +99,7 @@ class simulator:
 
         for q in tqdm(range(self.steps)):
             self.update_fields(q, source)
+            self.calc_flux(q)
             if q%plot_every==0:
                 E_plot.set_ydata(self.ez)
                 H_plot.set_ydata(self.hy*Z0)  # prob wrong
@@ -97,10 +108,26 @@ class simulator:
                 time.sleep(.1)
                 
 
+    def plot_spectrum(self):
+        plt.figure()
+        left=self.poynting_flux[:, 0]
+        right=self.poynting_flux[:, 1]
+        spec_l=np.fft.rfft(left)
+        spec_r=np.fft.rfft(right)
+        plt.plot(spec_l/np.max(np.abs(spec_l)), label='incoming')
+        plt.plot(spec_r/np.max(np.abs(spec_r)), label='outgoing')
+        plt.ylim(-1,1)
+        plt.xlim(0,1500)
+        plt.legend()
+        plt.show()
+        plt.pause(0.01)
+        input("<Hit Enter to close>")
+
 #test=simulator(10000, 1000)
 #test.add_loss()
 #test.run(50, 'harmonic', 10)
-test=simulator(5000, 1000)
+test=simulator(3000, 1000)
 test.add_loss()
 test.run(50, 'ricker')
+test.plot_spectrum()
 
