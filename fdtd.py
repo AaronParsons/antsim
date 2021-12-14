@@ -5,7 +5,7 @@ from tqdm import tqdm
 import time
 import matplotlib.pyplot as plt
 
-from sources import harmonic
+import sources
 
 
 # Constants
@@ -16,7 +16,7 @@ Z0 = MU0 * C # Ohms, impedance of free space
 
 class simulator:
 
-    def __init__(self, steps, grid_size, sc=1., source_bd=10, source_ppw=1000):
+    def __init__(self, steps, grid_size, sc=1.):
         self.grid_size=grid_size
         self.steps=steps
         self.sc=sc  # courant number
@@ -32,9 +32,7 @@ class simulator:
         self.impedance=Z0*np.ones_like(self.grid)
         self.epsr=np.ones_like(self.grid)
 
-        # TFSF boundary
-        self.source_bd=source_bd
-        self.source_ppw=source_ppw
+        self.source_loc=0
 
     def add_loss(self, loss=0.02, thickness_ratio=0.5, epsr=4.):
         thickness=int(thickness_ratio*self.grid_size)
@@ -43,22 +41,42 @@ class simulator:
         self.epsr[:-thickness]=1.
         self.epsr[-thickness:]=epsr  # epsilon/espilon0
 
-    def update_fields(self, timestep):
+    def add_source(self, name, source_loc, **kwargs):
+        if name=='harmonic':
+            ppw=kwargs.pop('ppw', 1000)
+            def source(m, q):
+                return sources.harmonic(m, q, ppw, self.sc)
+        elif name=='ricker':
+            N_p=kwargs.pop('peak_frequency', 1000)
+            M_d=kwargs.pop('delay_multiple', 1)
+            def source(m, q):
+                return sources.ricker(m, q, N_p, M_d, self.sc)
+        else:
+            print('Invalid source name, must be "harmonic" or "ricker"')
+            return None
+        self.source_loc=source_loc
+        return source
+
+
+    def update_fields(self, timestep, source):
         """
         Only electric loss, no magnetic
         """
         self.hy[-1]=self.hy[-2]  # ABC
         self.hy[:-1]+=np.diff(self.ez)/self.impedance[:-1]
-        self.hy[self.source_bd-1]-=harmonic(0, timestep, self.sc, self.source_ppw)
+        if source is not None:
+            self.hy[self.source_loc-1]-=source(0, timestep)
         self.ez[0]=self.ez[1]  # ABC
         self.ez[1:]*=(1.-self.loss[1:])/(1.+self.loss[1:]) 
         self.ez[1:]+=np.diff(self.hy)*self.impedance[1:]/(self.epsr[1:]*(1+self.loss[1:]))  # den=1 for vacuum
-        self.ez[self.source_bd]+=harmonic(-.5, timestep+.5, self.sc, self.source_ppw)
+        if source is not None:
+            self.ez[self.source_loc]+=source(-.5, timestep+.5)
    
-    def run(self, plot_every, source_ppw=None):
-        if source_ppw:
-            self.source_ppw=source_ppw
-
+    def run(self, plot_every, source_fcn=None, source_loc=10, **kwargs):
+        if source_fcn is not None:
+            source=self.add_source(source_fcn, source_loc, **kwargs)
+        else:
+            source=None
         # create figure to plot
         plt.ion()
         fig=plt.figure()
@@ -70,7 +88,7 @@ class simulator:
         plt.legend()
 
         for q in tqdm(range(self.steps)):
-            self.update_fields(q)
+            self.update_fields(q, source)
             if q%plot_every==0:
                 E_plot.set_ydata(self.ez)
                 H_plot.set_ydata(self.hy*Z0)  # prob wrong
@@ -79,8 +97,10 @@ class simulator:
                 time.sleep(.1)
                 
 
-test=simulator(10000, 1000)
+#test=simulator(10000, 1000)
 #test.add_loss()
-test.run(50)
-
+#test.run(50, 'harmonic', 10)
+test=simulator(5000, 1000)
+test.add_loss()
+test.run(50, 'ricker')
 
