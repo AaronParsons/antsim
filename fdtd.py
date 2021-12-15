@@ -120,7 +120,6 @@ class simulator:
                 fig.canvas.flush_events()
                 time.sleep(.1)
 
-        print('Total power out = {}'.format(np.sum(self.poynting_flux[:,-1]**2)))
                 
 
     def plot_spectrum(self, spectrum='E'):
@@ -152,6 +151,7 @@ if __name__=='__main__':
     test=simulator(1000)
     test.add_loss(loss=0.02, thickness_ratio=0.1, epsr=4)
     test.run(2000-1, 10, 'harmonic', 500, ppw=5)
+    print('Total power out = {}'.format(np.sum(self.poynting_flux[:,-1]**2)))
     #test=simulator(10000)
     #test.add_loss(loss=0.01, thickness_ratio=0.1, epsr=1)
     #test.run(100000, 1000, 'ricker', 10, ppw=500, delay_multiple=1)
