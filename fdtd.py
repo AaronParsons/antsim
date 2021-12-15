@@ -41,12 +41,14 @@ class simulator:
         self.poynting_flux=np.empty((0, 2))  # each row is time,firsdt col=left edge, 2nd col=right edge
         self.E_flux=np.empty((0,3))
 
-    def add_loss(self, loss=0.02, thickness_ratio=0.5, epsr=4.):
+    def add_loss(self, loss=0.02, thickness_ratio=0.5, right_edge=0, epsr=4.):
         thickness=int(thickness_ratio*self.grid_size)
-        self.loss[:-thickness]=0.
-        self.loss[-thickness:]=loss
-        self.epsr[:-thickness]=1.
-        self.epsr[-thickness:]=epsr  # epsilon/espilon0
+        self.loss[:-(thickness+right_edge)]=0.
+        self.loss[-(thickness+right_edge):-right_edge]=loss
+        self.loss[-right_edge:]=0
+        self.epsr[:-(thickness+right_edge)]=1.
+        self.epsr[-(thickness+right_edge):-right_edge]=epsr
+        self.epsr[-right_edge:]=1.
 
     def add_source(self, name, source_loc, **kwargs):
         if name=='harmonic':
@@ -104,7 +106,9 @@ class simulator:
         E_plot,=plt.plot(np.arange(self.grid_size), self.ez, label='$E_z$')
         H_plot,=plt.plot(np.arange(self.grid_size)+0.5, self.hy, label='$H_y$')
         if len(np.nonzero(self.loss)[0])>0:
-            plt.axvspan(xmin=np.nonzero(self.loss)[0][0], xmax=np.nonzero(self.loss)[0][-1], ymin=-Z0, ymax=Z0, alpha=.5)
+            plt.axvspan(xmin=np.nonzero(self.loss)[0][0],
+                    xmax=np.nonzero(self.loss)[0][-1],
+                    ymin=-Z0, ymax=Z0, alpha=.5)
         plt.ylim(-Z0, Z0)
         #plt.xlim()
         plt.legend(loc='upper left')
