@@ -5,7 +5,11 @@ from tqdm import tqdm
 import time
 import matplotlib.pyplot as plt
 
-import sources
+try:
+    import sources
+except ImportError:
+    from antsim import sources
+
 
 
 # Constants
