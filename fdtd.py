@@ -148,7 +148,7 @@ class simulator:
         plt.pause(0.01)
         input('Hit Enter')
 
-if name=='__main__':
+if __name__=='__main__':
     test=simulator(1000)
     test.add_loss(loss=0.02, thickness_ratio=0.1, epsr=4)
     test.run(2000-1, 10, 'harmonic', 500, ppw=5)
