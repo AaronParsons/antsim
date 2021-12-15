@@ -16,9 +16,9 @@ Z0 = MU0 * C # Ohms, impedance of free space
 
 class simulator:
 
-    def __init__(self, steps, grid_size, sc=1.):
+    def __init__(self, grid_size, sc=1.):
         self.grid_size=grid_size
-        self.steps=steps
+        self.steps=0
         self.sc=sc  # courant number
 
         # initialize grid, loss, fields, impedance...
@@ -34,7 +34,8 @@ class simulator:
 
         self.source_loc=0
 
-        self.poynting_flux=np.empty((self.steps, 2))  # each row is time,firsdt col=left edge, 2nd col=right edge
+        self.poynting_flux=np.empty((0, 2))  # each row is time,firsdt col=left edge, 2nd col=right edge
+        self.E_flux=np.empty((0,3))
 
     def add_loss(self, loss=0.02, thickness_ratio=0.5, epsr=4.):
         thickness=int(thickness_ratio*self.grid_size)
@@ -49,7 +50,7 @@ class simulator:
             def source(m, q):
                 return sources.harmonic(m, q, ppw, self.sc)
         elif name=='ricker':
-            N_p=kwargs.pop('peak_frequency', 1000)
+            N_p=kwargs.pop('ppw', 5000)
             M_d=kwargs.pop('delay_multiple', 1)
             def source(m, q):
                 return sources.ricker(m, q, N_p, M_d, self.sc)
@@ -81,53 +82,73 @@ class simulator:
         flux_l/=MU0
         self.poynting_flux[timestep]=[flux_l, flux_r]
 
+    def collect_E_flux(self, timestep, ppw, left_edge=1, right_edge=-2):
+        fr=self.ez[right_edge]
+        fl=self.ez[left_edge]
+        s=sources.harmonic(-.5, timestep+.5, ppw, 1)  # hardcoded for now...
+        self.E_flux[timestep]=[s, fl, fr]
 
-    def run(self, plot_every, source_fcn=None, source_loc=10, **kwargs):
-        if source_fcn is not None:
-            source=self.add_source(source_fcn, source_loc, **kwargs)
-        else:
-            source=None
+    def run(self, time_steps, plot_every, source_fcn='harmonic', source_loc=10, **kwargs):
+        self.steps=time_steps
+        self.poynting_flux=np.empty((self.steps, 2))
+        self.E_flux=np.empty((self.steps, 3))
+        ppw=kwargs['ppw']  # hardcoded...
+        source=self.add_source(source_fcn, source_loc, **kwargs)
         # create figure to plot
         plt.ion()
         fig=plt.figure()
         E_plot,=plt.plot(np.arange(self.grid_size), self.ez, label='$E_z$')
         H_plot,=plt.plot(np.arange(self.grid_size)+0.5, self.hy, label='$H_y$')
-        #atm_plot,=plt.plot(self.loss, label='Atmosphere')
+        if len(np.nonzero(self.loss)[0])>0:
+            plt.axvspan(xmin=np.nonzero(self.loss)[0][0], xmax=np.nonzero(self.loss)[0][-1], ymin=-Z0, ymax=Z0, alpha=.5)
         plt.ylim(-Z0, Z0)
         #plt.xlim()
-        plt.legend()
+        plt.legend(loc='upper left')
 
         for q in tqdm(range(self.steps)):
             self.update_fields(q, source)
             self.calc_flux(q)
+            self.collect_E_flux(q, ppw)
             if q%plot_every==0:
                 E_plot.set_ydata(self.ez)
-                H_plot.set_ydata(self.hy*Z0)  # prob wrong
+                H_plot.set_ydata(self.hy*Z0)
                 fig.canvas.draw()
                 fig.canvas.flush_events()
                 time.sleep(.1)
+
+        print('Total power out = {}'.format(np.sum(self.poynting_flux[:,-1]**2)))
                 
 
-    def plot_spectrum(self):
+    def plot_spectrum(self, spectrum='E'):
+        if spectrum=='E':
+            src=self.E_flux[:,0]
+            left=self.E_flux[:,1]
+            right=self.E_flux[:,2]
+        elif spectrum=='poynting':
+            left=self.poynting_flux[:, 0]**2  # power
+            right=self.poynting_flux[:, 1]**2
+        freqs=np.fft.rfftfreq(len(left)).real # DFT sample freqs
+        spec_l=np.fft.rfft(left).real
+        spec_r=np.fft.rfft(right).real
+        # plot
         plt.figure()
-        left=self.poynting_flux[:, 0]
-        right=self.poynting_flux[:, 1]
-        spec_l=np.fft.rfft(left)
-        spec_r=np.fft.rfft(right)
-        plt.plot(spec_l/np.max(np.abs(spec_l)), label='incoming')
-        plt.plot(spec_r/np.max(np.abs(spec_r)), label='outgoing')
-        plt.ylim(-1,1)
-        plt.xlim(0,1500)
+        if spectrum=='E':
+            spec_src=np.fft.rfft(src).real
+            plt.plot(freqs, spec_src/np.max(np.abs(spec_src)), label='source')
+        plt.plot(freqs, spec_l/np.max(np.abs(spec_l)), label='outgoing left')
+        plt.plot(freqs, spec_r/np.max(np.abs(spec_r)), label='outgoing right')
+        plt.ylim(-1.2,1.2)
+      #  plt.xlim(0,freqs[50])
         plt.legend()
         plt.show()
         plt.pause(0.01)
-        input("<Hit Enter to close>")
+        input('Hit Enter')
 
-#test=simulator(10000, 1000)
-#test.add_loss()
-#test.run(50, 'harmonic', 10)
-test=simulator(3000, 1000)
-test.add_loss()
-test.run(50, 'ricker')
+test=simulator(1000)
+test.add_loss(loss=0.02, thickness_ratio=0.1, epsr=4)
+test.run(2000-1, 10, 'harmonic', 500, ppw=5)
+#test=simulator(10000)
+#test.add_loss(loss=0.01, thickness_ratio=0.1, epsr=1)
+#test.run(100000, 1000, 'ricker', 10, ppw=500, delay_multiple=1)
 test.plot_spectrum()
-
+test.plot_spectrum(spectrum='poynting')
