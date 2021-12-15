@@ -105,7 +105,7 @@ class simulator:
         H_plot,=plt.plot(np.arange(self.grid_size)+0.5, self.hy, label='$H_y$')
         if len(np.nonzero(self.loss)[0])>0:
             plt.axvspan(xmin=np.nonzero(self.loss)[0][0], xmax=np.nonzero(self.loss)[0][-1], ymin=-Z0, ymax=Z0, alpha=.5)
-        elif len(np.nonzero(self.epsr-1)[0})>0:
+        elif len(np.nonzero(self.epsr-1)[0])>0:
             plt.axvspan(xmin=np.nonzero(self.epsr-1)[0][0], xmax=np.nonzero(self.epsr-1)[0][-1]m ymin=-Z0, ymax=Z0, alpha=.3)
         plt.ylim(-Z0, Z0)
         #plt.xlim()
