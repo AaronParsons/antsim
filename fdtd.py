@@ -4,13 +4,13 @@ import numpy as np
 from tqdm import tqdm
 import time
 import matplotlib.pyplot as plt
-from constants import MU0, C, EPS0, Z0
 
 try:
     import sources
+    from constants import MU0, C, EPS0, Z0
 except ImportError:
     from antsim import sources
-
+    from antsim.constants import MU0, C, EPS0, Z0
 
 class simulator:
 
