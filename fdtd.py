@@ -38,11 +38,17 @@ class simulator:
     def add_loss(self, loss=0.02, thickness_ratio=0.5, right_edge=0, epsr=4.):
         thickness=int(thickness_ratio*self.grid_size)
         self.loss[:-(thickness+right_edge)]=0.
-        self.loss[-(thickness+right_edge):-right_edge]=loss
-        self.loss[-right_edge:]=0
+        if right_edge>0:
+            self.loss[-(thickness+right_edge):-right_edge]=loss
+            self.loss[-right_edge:]=0
+        else:
+            self.loss[-thickness:]=loss
         self.epsr[:-(thickness+right_edge)]=1.
-        self.epsr[-(thickness+right_edge):-right_edge]=epsr
-        self.epsr[-right_edge:]=1.
+        if right_edge>0:
+            self.epsr[-(thickness+right_edge):-right_edge]=epsr
+            self.epsr[-right_edge:]=1.
+        else:
+            self.epsr[-thickness:]=epsr
 
     def add_source(self, name, source_loc, **kwargs):
         if name=='harmonic':
