@@ -4,19 +4,13 @@ import numpy as np
 from tqdm import tqdm
 import time
 import matplotlib.pyplot as plt
+from constants import MU0, C, EPS0, Z0
 
 try:
     import sources
 except ImportError:
     from antsim import sources
 
-
-
-# Constants
-MU0 = 4 * np.pi * 1e-7 # H/m, permeability of free space
-C = 2.99792458e8 # m/s
-EPS0 = 1. / (MU0 * C**2) # F/m, permittivity of free space
-Z0 = MU0 * C # Ohms, impedance of free space
 
 class simulator:
 
@@ -39,7 +33,7 @@ class simulator:
         self.source_loc=0
 
         self.poynting_flux=np.empty((0, 2))  # each row is time,firsdt col=left edge, 2nd col=right edge
-        self.E_flux=np.empty((0,3))
+ #       self.E_flux=np.empty((0,3))
 
     def add_loss(self, loss=0.02, thickness_ratio=0.5, right_edge=0, epsr=4.):
         thickness=int(thickness_ratio*self.grid_size)
@@ -88,17 +82,16 @@ class simulator:
         flux_l/=MU0
         self.poynting_flux[timestep]=[flux_l, flux_r]
 
-    def collect_E_flux(self, timestep, ppw, left_edge=1, right_edge=-2):
-        fr=self.ez[right_edge]
-        fl=self.ez[left_edge]
-        s=sources.harmonic(-.5, timestep+.5, ppw, 1)  # hardcoded for now...
-        self.E_flux[timestep]=[s, fl, fr]
+#    def collect_E_flux(self, timestep, ppw, left_edge=1, right_edge=-2):
+#        fr=self.ez[right_edge]
+#        fl=self.ez[left_edge]
+#        s=sources.harmonic(-.5, timestep+.5, ppw, 1)  # hardcoded for now...
+#        self.E_flux[timestep]=[s, fl, fr]
+
 
     def run(self, time_steps, plot_every, source_fcn='harmonic', source_loc=10, **kwargs):
         self.steps=time_steps
         self.poynting_flux=np.empty((self.steps, 2))
-        self.E_flux=np.empty((self.steps, 3))
-        ppw=kwargs['ppw']  # hardcoded...
         source=self.add_source(source_fcn, source_loc, **kwargs)
         # create figure to plot
         plt.ion()
@@ -117,7 +110,6 @@ class simulator:
         for q in tqdm(range(self.steps)):
             self.update_fields(q, source)
             self.calc_flux(q)
-            self.collect_E_flux(q, ppw)
             if q%plot_every==0:
                 E_plot.set_ydata(self.ez)
                 H_plot.set_ydata(self.hy*Z0)
@@ -127,22 +119,14 @@ class simulator:
 
                 
 
-    def plot_spectrum(self, spectrum='E'):
-        if spectrum=='E':
-            src=self.E_flux[:,0]
-            left=self.E_flux[:,1]
-            right=self.E_flux[:,2]
-        elif spectrum=='poynting':
-            left=self.poynting_flux[:, 0]**2  # power
-            right=self.poynting_flux[:, 1]**2
+    def plot_spectrum(self):
+        left=self.poynting_flux[:, 0]**2  # power
+        right=self.poynting_flux[:, 1]**2
         freqs=np.fft.rfftfreq(len(left)).real # DFT sample freqs
         spec_l=np.fft.rfft(left).real
         spec_r=np.fft.rfft(right).real
         # plot
         plt.figure()
-        if spectrum=='E':
-            spec_src=np.fft.rfft(src).real
-            plt.plot(freqs, spec_src/np.max(np.abs(spec_src)), label='source')
         plt.plot(freqs, spec_l/np.max(np.abs(spec_l)), label='outgoing left')
         plt.plot(freqs, spec_r/np.max(np.abs(spec_r)), label='outgoing right')
         plt.ylim(-1.2,1.2)
