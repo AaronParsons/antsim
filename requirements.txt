@@ -1,0 +1,10 @@
+black
+flake8
+jupyter
+h5py
+matplotlib
+numpy
+pytest
+tensorflow
+tox
+tqdm
