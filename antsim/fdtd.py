@@ -1,5 +1,3 @@
-'''An initial 1D test of FDTD.'''
-
 import numpy as np
 from tqdm import tqdm
 import time
@@ -144,8 +142,8 @@ class simulator:
 
 if __name__=='__main__':
     test=simulator(1000)
-    test.add_loss(loss=0.02, thickness_ratio=0.1, epsr=4)
-    test.run(2000-1, 10, 'harmonic', 500, ppw=5)
+    test.add_loss(loss=0, thickness_ratio=0.1, epsr=4)
+    test.run(2000-1, 10, 'harmonic', 500, ppw=10)
     print('Total power out = {}'.format(np.sum(self.poynting_flux[:,-1]**2)))
     #test=simulator(10000)
     #test.add_loss(loss=0.01, thickness_ratio=0.1, epsr=1)
