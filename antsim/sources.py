@@ -3,13 +3,28 @@ import numpy as np
 
 def harmonic(m, q, ppw, sc):
     """
-    m = float: spatial step
-    q = float: temporal step
-    sc = float: courant number
-    ppw = float: points per wavelength
+    Hamornic source.
+
+    Parameters
+    ----------
+    m : float
+        Spatial step.
+    q : float
+        Temporal step.
+    ppw : float
+        Points per wavelength.
+    sc : float
+        Courant number.
+
+    Returns
+    -------
+    source : float
+        The harmonic source evaluated at the specified space and time.
+
     """
     arg = 2 * np.pi / ppw * (sc * q - m)
-    return np.sin(arg)
+    source = np.sin(arg)
+    return source
 
 
 def ricker(m, q, N_p, M_d, sc):
