@@ -5,6 +5,5 @@ h5py
 matplotlib
 numpy
 pytest
-tensorflow
 tox
 tqdm
