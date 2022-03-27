@@ -11,37 +11,28 @@ import antsim.sources
 class Simulator:
     def __init__(self, grid_size, sc=1.0):
         self.grid_size = grid_size
-        self.steps = 0
         self.sc = sc  # courant number
 
         # initialize grid, loss, fields, impedance...
         self.grid = np.zeros(self.grid_size)
-        self.loss = np.zeros_like(self.grid)
         # Define Yee lattice
         # E0 H0 E1 H1 ... HN
         # so that, e.g., H0 can be regarded as being at E0.5
         self.hy = np.zeros_like(self.grid)
         self.ez = np.zeros_like(self.grid)
-        self.impedance = Z0 * np.ones_like(self.grid)
-        self.epsr = np.ones_like(self.grid)
+        
+        # relative permettivity and permeability (vacuum: 1)
+        self.eps_r = np.ones_like(self.grid)
+        self.mu_r = np.ones_like(self.grid)
+        self.loss = np.zeros_like(self.grid)  # only electrical for now
 
-        self.source_loc = 0
-        self.source = lambda x : 0
 
-    def add_loss(self, loss=0.02, thickness_ratio=0.5, right_edge=0, epsr=4.0):
-        thickness = int(thickness_ratio * self.grid_size)
-        self.loss[: -(thickness + right_edge)] = 0.0
-        if right_edge > 0:
-            self.loss[-(thickness + right_edge) : -right_edge] = loss
-            self.loss[-right_edge:] = 0
-        else:
-            self.loss[-thickness:] = loss
-        self.epsr[: -(thickness + right_edge)] = 1.0
-        if right_edge > 0:
-            self.epsr[-(thickness + right_edge) : -right_edge] = epsr
-            self.epsr[-right_edge:] = 1.0
-        else:
-            self.epsr[-thickness:] = epsr
+    def add_matter(self, bounds, eps_r=1, mu_r=1, loss=0):
+        left, right = bounds
+        indices = np.arange(left, right+1, 1)
+        self.eps_r[indices] = eps_r
+        self.mu_r[indices] = mu_r
+        self.loss[indices] = loss
 
     def add_source(self, name, source_loc, **kwargs):
         if name == "harmonic":
